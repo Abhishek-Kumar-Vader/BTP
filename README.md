@@ -24,8 +24,8 @@ The UI layer is built with Jetpack Compose and Material Design 3, providing a re
 
 ## Technology Stack
 
-The application is written entirely in Kotlin. The user interface leverages Jetpack Compose. Machine learning features are powered by TensorFlow Lite. State management is handled through Kotlin Coroutines, StateFlow, and Jetpack ViewModel architecture. The testing suite includes JUnit 5 for unit tests and MockK for dependency mocking.
+The application is written entirely in Kotlin. The UI leverages Jetpack Compose. Machine learning features are powered by TensorFlow Lite. State management is handled through Kotlin Coroutines, StateFlow, and Jetpack ViewModel architecture. The testing suite includes JUnit 5 for unit tests and MockK for dependency mocking.
 
 ## Requirements
 
-The project targets Android SDK 35 and requires a minimum SDK of 26 (Android 8.0).
+The project targets Android SDK 35 (Android 15) and requires a minimum SDK of 26 (Android 8.0).
