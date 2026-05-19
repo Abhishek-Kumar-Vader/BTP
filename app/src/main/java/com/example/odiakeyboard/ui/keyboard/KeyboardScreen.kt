@@ -29,22 +29,21 @@ import com.example.odiakeyboard.model.KeyboardMode
 import com.example.odiakeyboard.model.ShiftState
 import com.example.odiakeyboard.viewmodel.KeyboardViewModel
 
-// ── Test tags ─────────────────────────────────────────────────────────────────
 object KeyboardTestTags {
-    const val KEYBOARD_SCREEN    = "keyboard_screen"
-    const val SUGGESTION_ROW     = "suggestion_row"
-    const val CHARACTER_ROW      = "character_row"
-    const val SHIFT_KEY          = "shift_key"
-    const val BACKSPACE_KEY      = "backspace_key"
-    const val SPACE_KEY          = "space_key"
-    const val SYMBOL_TOGGLE_KEY  = "symbol_toggle_key"
-    const val ENTER_KEY          = "enter_key"
+    const val KEYBOARD_SCREEN = "keyboard_screen"
+    const val SUGGESTION_ROW = "suggestion_row"
+    const val CHARACTER_ROW = "character_row"
+    const val SHIFT_KEY = "shift_key"
+    const val BACKSPACE_KEY = "backspace_key"
+    const val SPACE_KEY = "space_key"
+    const val SYMBOL_TOGGLE_KEY = "symbol_toggle_key"
+    const val ENTER_KEY = "enter_key"
 }
 
 @Composable
 fun KeyboardScreen(
     viewModel: KeyboardViewModel,
-    onKeyHaptic: () -> Unit = {},
+    onKeyHaptic: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val colors = MaterialTheme.colorScheme
@@ -54,20 +53,16 @@ fun KeyboardScreen(
             .fillMaxWidth()
             .background(colors.background)
             .testTag(KeyboardTestTags.KEYBOARD_SCREEN)
-            .imePadding(),
+            .imePadding()
     ) {
-
-        // ── Suggestion strip (Phase 2 — visible when suggestions are non-empty) ─
         if (state.suggestions.isNotEmpty()) {
             SuggestionStrip(
-                suggestions       = state.suggestions,
-                // Phase 2: tap-to-complete wired to ViewModel
-                onSuggestionClick = { word -> viewModel.onSuggestionSelected(word) },
+                suggestions = state.suggestions,
+                onSuggestionClick = { word -> viewModel.onSuggestionSelected(word) }
             )
             HorizontalDivider(color = colors.outline.copy(alpha = 0.3f))
         }
 
-        // ── Character rows ────────────────────────────────────────────────────
         val rows = OdiaInScriptLayout.getRows(state.keyboardMode)
         rows.forEach { row ->
             Row(
@@ -75,11 +70,11 @@ fun KeyboardScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 4.dp)
                     .testTag(KeyboardTestTags.CHARACTER_ROW),
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.Center
             ) {
                 row.forEach { key ->
                     KeyboardKey(
-                        key        = key,
+                        key = key,
                         shiftState = state.shiftState,
                         onKeyPress = { pressed ->
                             onKeyHaptic()
@@ -87,112 +82,112 @@ fun KeyboardScreen(
                         },
                         modifier = Modifier
                             .weight(key.widthWeight)
-                            .height(56.dp), // Increased from 48.dp
+                            .height(56.dp)
                     )
                 }
             }
         }
 
-        // ── Bottom functional row ─────────────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment     = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             KeyboardKey(
-                key        = OdiaInScriptLayout.shiftKey,
+                key = OdiaInScriptLayout.shiftKey,
                 shiftState = state.shiftState,
                 onKeyPress = { onKeyHaptic(); viewModel.onKeyPressed(it) },
-                modifier   = Modifier
+                modifier = Modifier
                     .weight(OdiaInScriptLayout.shiftKey.widthWeight)
-                    .height(56.dp) // Increased from 48.dp
-                    .testTag(KeyboardTestTags.SHIFT_KEY),
+                    .height(56.dp)
+                    .testTag(KeyboardTestTags.SHIFT_KEY)
             )
 
-            val toggleKey = if (state.keyboardMode == KeyboardMode.ALPHA)
-                OdiaInScriptLayout.symbolToggleKey else OdiaInScriptLayout.alphaToggleKey
+            val toggleKey = if (state.keyboardMode == KeyboardMode.ALPHA) {
+                OdiaInScriptLayout.symbolToggleKey
+            } else {
+                OdiaInScriptLayout.alphaToggleKey
+            }
 
             KeyboardKey(
-                key        = toggleKey,
+                key = toggleKey,
                 shiftState = ShiftState.OFF,
                 onKeyPress = { onKeyHaptic(); viewModel.onKeyPressed(it) },
-                modifier   = Modifier
+                modifier = Modifier
                     .weight(toggleKey.widthWeight)
-                    .height(56.dp) // Increased from 48.dp
-                    .testTag(KeyboardTestTags.SYMBOL_TOGGLE_KEY),
+                    .height(56.dp)
+                    .testTag(KeyboardTestTags.SYMBOL_TOGGLE_KEY)
             )
 
             KeyboardKey(
-                key        = OdiaInScriptLayout.spaceKey,
+                key = OdiaInScriptLayout.spaceKey,
                 shiftState = ShiftState.OFF,
                 onKeyPress = { onKeyHaptic(); viewModel.onKeyPressed(it) },
-                modifier   = Modifier
+                modifier = Modifier
                     .weight(OdiaInScriptLayout.spaceKey.widthWeight)
-                    .height(56.dp) // Increased from 48.dp
-                    .testTag(KeyboardTestTags.SPACE_KEY),
+                    .height(56.dp)
+                    .testTag(KeyboardTestTags.SPACE_KEY)
             )
 
             KeyboardKey(
-                key                       = OdiaInScriptLayout.backspaceKey,
-                shiftState                = ShiftState.OFF,
-                onKeyPress                = { onKeyHaptic(); viewModel.onKeyPressed(it) },
+                key = OdiaInScriptLayout.backspaceKey,
+                shiftState = ShiftState.OFF,
+                onKeyPress = { onKeyHaptic(); viewModel.onKeyPressed(it) },
                 onBackspaceLongPressStart = { viewModel.onBackspaceLongPressStart() },
-                onBackspaceLongPressEnd   = { viewModel.onBackspaceLongPressEnd() },
+                onBackspaceLongPressEnd = { viewModel.onBackspaceLongPressEnd() },
                 modifier = Modifier
                     .weight(OdiaInScriptLayout.backspaceKey.widthWeight)
-                    .height(56.dp) // Increased from 48.dp
-                    .testTag(KeyboardTestTags.BACKSPACE_KEY),
+                    .height(56.dp)
+                    .testTag(KeyboardTestTags.BACKSPACE_KEY)
             )
 
             KeyboardKey(
-                key        = OdiaInScriptLayout.enterKey,
+                key = OdiaInScriptLayout.enterKey,
                 shiftState = ShiftState.OFF,
                 onKeyPress = { onKeyHaptic(); viewModel.onKeyPressed(it) },
-                modifier   = Modifier
+                modifier = Modifier
                     .weight(OdiaInScriptLayout.enterKey.widthWeight)
-                    .height(56.dp) // Increased from 48.dp
-                    .testTag(KeyboardTestTags.ENTER_KEY),
+                    .height(56.dp)
+                    .testTag(KeyboardTestTags.ENTER_KEY)
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp)) // Increased from 4.dp
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SuggestionStrip(
     suggestions: List<String>,
-    onSuggestionClick: (String) -> Unit,
+    onSuggestionClick: (String) -> Unit
 ) {
     LazyRow(
-        modifier           = Modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .height(44.dp) // Increased from 36.dp
+            .height(44.dp)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .testTag(KeyboardTestTags.SUGGESTION_ROW),
-        verticalAlignment  = Alignment.CenterVertically,
-        contentPadding     = PaddingValues(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        contentPadding = PaddingValues(horizontal = 8.dp)
     ) {
         items(suggestions) { suggestion ->
             TextButton(
-                onClick          = { onSuggestionClick(suggestion) },
-                contentPadding   = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                onClick = { onSuggestionClick(suggestion) },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
             ) {
                 Text(
-                    text  = suggestion,
+                    text = suggestion,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             VerticalDivider(
                 modifier = Modifier
                     .height(18.dp)
                     .padding(horizontal = 2.dp),
-                color    = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
             )
         }
     }

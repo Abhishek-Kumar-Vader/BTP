@@ -23,21 +23,14 @@ import com.example.odiakeyboard.viewmodel.InputConnectionHandler
 import com.example.odiakeyboard.viewmodel.KeyboardViewModel
 
 class OdiaInputMethodService : InputMethodService() {
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
-
     private val lifecycleOwner = ImeLifecycleOwner()
-
-    // ── ViewModel — now created with the ML factory ───────────────────────────
 
     private val viewModel: KeyboardViewModel by lazy {
         ViewModelProvider(
             lifecycleOwner,
-            KeyboardViewModelFactory(this),   // ← Phase 2: injects OdiaSuggestionRepository
+            KeyboardViewModelFactory(this)
         )[KeyboardViewModel::class.java]
     }
-
-    // ── Haptic ────────────────────────────────────────────────────────────────
 
     private val vibrator: Vibrator by lazy {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -48,35 +41,31 @@ class OdiaInputMethodService : InputMethodService() {
         }
     }
 
-    // ── InputConnectionHandler ────────────────────────────────────────────────
-
     private val icHandler = object : InputConnectionHandler {
         private fun ic(): InputConnection? = currentInputConnection
 
         override fun commitText(text: String) {
             ic()?.commitText(text, 1)
         }
+
         override fun deleteSurroundingText(beforeLength: Int, afterLength: Int) {
             ic()?.deleteSurroundingText(beforeLength, afterLength)
         }
+
         override fun performEditorAction(actionId: Int) {
-            ic()?.performEditorAction(
-                if (actionId == EditorInfo.IME_ACTION_UNSPECIFIED)
-                    currentInputEditorInfo?.imeOptions
-                        ?.and(EditorInfo.IME_MASK_ACTION)
-                        ?: EditorInfo.IME_ACTION_DONE
-                else actionId
-            )
+            val finalActionId = if (actionId == EditorInfo.IME_ACTION_UNSPECIFIED) {
+                currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_DONE
+            } else {
+                actionId
+            }
+            ic()?.performEditorAction(finalActionId)
         }
+
         override fun sendKeyEvent(keyCode: Int, metaState: Int) {
             ic()?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode))
-            ic()?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP,   keyCode))
+            ic()?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode))
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Service lifecycle
-    // ─────────────────────────────────────────────────────────────────────────
 
     override fun onCreate() {
         super.onCreate()
@@ -88,8 +77,6 @@ class OdiaInputMethodService : InputMethodService() {
     override fun onCreateInputView(): View {
         lifecycleOwner.onResume()
 
-        // Fix: Compose requires the owners to be set on the window's decor view
-        // to handle certain cases (like when it's placed inside a parentPanel).
         window?.window?.decorView?.let { decorView ->
             decorView.setViewTreeLifecycleOwner(lifecycleOwner)
             decorView.setViewTreeViewModelStoreOwner(lifecycleOwner)
@@ -106,8 +93,8 @@ class OdiaInputMethodService : InputMethodService() {
             setContent {
                 OdiaKeyboardTheme {
                     KeyboardScreen(
-                        viewModel   = viewModel,
-                        onKeyHaptic = { triggerHaptic() },
+                        viewModel = viewModel,
+                        onKeyHaptic = { triggerHaptic() }
                     )
                 }
             }
@@ -123,12 +110,10 @@ class OdiaInputMethodService : InputMethodService() {
 
     override fun onFinishInput() {
         super.onFinishInput()
-        // Do NOT detach — handler safely returns null when IC is stale
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        // StateFlow drives automatic recomposition — no manual action needed
     }
 
     override fun onDestroy() {
@@ -139,10 +124,6 @@ class OdiaInputMethodService : InputMethodService() {
         super.onDestroy()
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Haptic feedback
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun triggerHaptic() {
         if (!isHapticFeedbackEnabled()) return
         try {
@@ -152,13 +133,14 @@ class OdiaInputMethodService : InputMethodService() {
                 @Suppress("DEPRECATION")
                 vibrator.vibrate(20L)
             }
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+        }
     }
 
     private fun isHapticFeedbackEnabled(): Boolean =
         android.provider.Settings.System.getInt(
             contentResolver,
             android.provider.Settings.System.HAPTIC_FEEDBACK_ENABLED,
-            1,
+            1
         ) != 0
 }

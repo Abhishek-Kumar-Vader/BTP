@@ -30,26 +30,28 @@ fun KeyboardKey(
     onKeyPress: (KeyData) -> Unit,
     onBackspaceLongPressStart: () -> Unit = {},
     onBackspaceLongPressEnd: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
-    val isFunctionKey = key.keyType != KeyType.CHARACTER && key.keyType != KeyType.SPACE
-    val isShiftActive = shiftState != ShiftState.OFF
+    val isCharacterOrSpace = key.keyType == KeyType.CHARACTER || key.keyType == KeyType.SPACE
+    val isShiftEnabled = shiftState != ShiftState.OFF
 
-    val keyBackground = when {
-        key.keyType == KeyType.SPACE       -> colors.surface
-        key.keyType == KeyType.SHIFT && isShiftActive -> colors.primary
-        isFunctionKey                      -> colors.surfaceVariant
-        else                               -> colors.surface
+    val backgroundColor = when {
+        key.keyType == KeyType.SPACE -> colors.surface
+        key.keyType == KeyType.SHIFT && isShiftEnabled -> colors.primary
+        !isCharacterOrSpace -> colors.surfaceVariant
+        else -> colors.surface
     }
-    val keyTextColor = when {
-        key.keyType == KeyType.SHIFT && isShiftActive -> colors.onPrimary
+    
+    val textColor = when {
+        key.keyType == KeyType.SHIFT && isShiftEnabled -> colors.onPrimary
         else -> colors.onSurface
     }
 
-    val displayText = when {
-        key.keyType == KeyType.CHARACTER && isShiftActive -> key.shiftedLabel
-        else -> key.displayLabel
+    val label = if (key.keyType == KeyType.CHARACTER && isShiftEnabled) {
+        key.shiftedLabel
+    } else {
+        key.displayLabel
     }
 
     var isPressed by remember { mutableStateOf(false) }
@@ -60,39 +62,45 @@ fun KeyboardKey(
             .shadow(
                 elevation = if (isPressed) 1.dp else 3.dp,
                 shape = RoundedCornerShape(6.dp),
-                ambientColor = Color.Black.copy(alpha = 0.25f),
+                ambientColor = Color.Black.copy(alpha = 0.25f)
             )
             .clip(RoundedCornerShape(6.dp))
-            .background(keyBackground)
+            .background(backgroundColor)
             .semantics { contentDescription = key.contentDescription }
             .pointerInput(key) {
                 detectTapGestures(
-                    onPress = { _ ->
+                    onPress = {
                         isPressed = true
-                        if (key.keyType == KeyType.BACKSPACE) onBackspaceLongPressStart()
+                        if (key.keyType == KeyType.BACKSPACE) {
+                            onBackspaceLongPressStart()
+                        }
                         try {
                             awaitRelease()
                         } finally {
                             isPressed = false
-                            if (key.keyType == KeyType.BACKSPACE) onBackspaceLongPressEnd()
+                            if (key.keyType == KeyType.BACKSPACE) {
+                                onBackspaceLongPressEnd()
+                            }
                         }
                     },
-                    onTap = { onKeyPress(key) },
+                    onTap = { onKeyPress(key) }
                 )
             },
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
+        val fontSize = when (key.keyType) {
+            KeyType.SPACE -> 12.sp
+            KeyType.CHARACTER -> if (key.displayLabel.length > 1) 14.sp else 22.sp
+            else -> 14.sp
+        }
+        
         Text(
-            text = displayText,
-            fontSize = when (key.keyType) {
-                KeyType.SPACE  -> 12.sp
-                KeyType.CHARACTER -> if (key.displayLabel.length > 1) 14.sp else 22.sp
-                else           -> 14.sp
-            },
-            fontWeight = if (isFunctionKey) FontWeight.Medium else FontWeight.Normal,
-            color = keyTextColor,
+            text = label,
+            fontSize = fontSize,
+            fontWeight = if (!isCharacterOrSpace) FontWeight.Medium else FontWeight.Normal,
+            color = textColor,
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            maxLines = 1
         )
     }
 }

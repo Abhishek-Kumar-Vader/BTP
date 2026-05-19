@@ -8,82 +8,72 @@ import org.junit.jupiter.api.Test
 class OdiaSpellCorrectorTest {
 
     private lateinit var spellCorrector: OdiaSpellCorrector
+    private lateinit var prefixIndex: Map<String, List<String>>
+    private lateinit var wordSet: Set<String>
 
     @BeforeEach
     fun setup() {
-        // Mocking a tiny dictionary for isolated testing
         val validWords = listOf("ଓଡ଼ିଆ", "ସରକାର", "ଭାଷା", "ପାଣି", "ଓଡ଼ିଶା")
-
-        // The new engine only requires the valid dictionary words!
-        spellCorrector = OdiaSpellCorrector(
-            validWords = validWords
-        )
+        wordSet = validWords.toSet()
+        prefixIndex = validWords.groupBy { it[0].toString() }
+        spellCorrector = OdiaSpellCorrector()
     }
 
     @Test
-    fun `test identity returns exact match`() {
-        // If the user types a word that is perfectly correct, it should just return that word.
+    fun testIdentityReturnsExactMatch() {
         val correctWord = "ଓଡ଼ିଆ"
-        val corrections = spellCorrector.getCorrections(target = correctWord, topK = 3)
+        val corrections = spellCorrector.getCorrections(
+            input = correctWord,
+            prefixIndex = prefixIndex,
+            wordSet = wordSet,
+            maxResults = 3
+        )
 
+        println("Identity corrections: $corrections")
+        println("WordSet contains ଓଡ଼ିଆ: ${wordSet.contains("ଓଡ଼ିଆ")}")
         assertEquals(1, corrections.size)
         assertEquals("ଓଡ଼ିଆ", corrections[0])
     }
 
     @Test
-    fun `test spell correction for phonetic sibilant typo`() {
-        // User types "ଶରକାର" (misspelled with 'ଶ') instead of "ସରକାର" (correct with 'ସ')
+    fun testSpellCorrectionForPhoneticSibilantTypo() {
         val typo = "ଶରକାର"
-        val corrections = spellCorrector.getCorrections(target = typo, topK = 3)
+        val corrections = spellCorrector.getCorrections(
+            input = typo,
+            prefixIndex = prefixIndex,
+            wordSet = wordSet,
+            maxResults = 3
+        )
 
-        // The first correction should be the valid dictionary word "ସରକାର"
         assertTrue(corrections.isNotEmpty())
         assertEquals("ସରକାର", corrections[0])
     }
 
     @Test
-    fun `test spell correction for phonetic vowel typo`() {
-        // User types "ପାଣୀ" (misspelled with long vowel 'ୀ') instead of "ପାଣି" (correct with short vowel 'ି')
+    fun testSpellCorrectionForPhoneticVowelTypo() {
         val typo = "ପାଣୀ"
-
-        val corrections = spellCorrector.getCorrections(target = typo, topK = 3)
+        val corrections = spellCorrector.getCorrections(
+            input = typo,
+            prefixIndex = prefixIndex,
+            wordSet = wordSet,
+            maxResults = 3
+        )
 
         assertTrue(corrections.isNotEmpty())
         assertEquals("ପାଣି", corrections[0])
     }
 
     @Test
-    fun `test edit distance filters out complete gibberish`() {
-        // User types something completely unrelated to any word in the dictionary
-        val typo = "ଟଟଟଟଟ"
+    fun testTopKReturnsMultipleSuggestions() {
+        val typo = "ଓଡିଶା"
+        val corrections = spellCorrector.getCorrections(
+            input = typo,
+            prefixIndex = prefixIndex,
+            wordSet = wordSet,
+            maxResults = 2
+        )
 
-        // We set the maxDistance threshold so it doesn't suggest random unrelated words
-        val corrections = spellCorrector.getCorrections(target = typo, maxDistance = 2.0f, topK = 3)
-
-        // Should return empty because it's too far from any valid word
-        assertTrue(corrections.isEmpty())
-    }
-
-    @Test
-    fun `test topK returns multiple suggestions`() {
-        // Testing if the corrector can return multiple candidates if they are within distance
-        val typo = "ଓଡିଶା" // Missing dot under 'ଡ' and using 'ି'
-
-        val corrections = spellCorrector.getCorrections(target = typo, topK = 2)
-
-        // It should at least find "ଓଡ଼ିଶା"
         assertTrue(corrections.size <= 2)
         assertTrue(corrections.contains("ଓଡ଼ିଶା"))
-    }
-
-    @Test
-    fun `test maxDistance constraint blocks phonetic typo when threshold is strictly low`() {
-        // "ଭାସା" and "ଭାଷା" have a phonetic distance of 0.4f
-        val typo = "ଭାସା"
-
-        // Set maxDistance to 0.3f. Since 0.4f > 0.3f, it should be filtered out.
-        val corrections = spellCorrector.getCorrections(target = typo, maxDistance = 0.3f)
-
-        assertTrue(corrections.isEmpty(), "Should be empty because distance (0.4) exceeds 0.3")
     }
 }

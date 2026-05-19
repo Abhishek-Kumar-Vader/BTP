@@ -11,166 +11,174 @@ import java.nio.MappedByteBuffer
 
 class ModelAssetLoader(private val context: Context) {
 
-    // ── vocab: word → index ───────────────────────────────────────────────────
-    @Volatile private var _vocab: Map<String, Int>? = null
-    suspend fun vocab(): Map<String, Int> = _vocab ?: withContext(Dispatchers.IO) {
-        loadJsonObjectAsIntMap("vocab.json").also { _vocab = it }
+    @Volatile private var vocabulary: Map<String, Int>? = null
+    suspend fun vocab(): Map<String, Int> = vocabulary ?: withContext(Dispatchers.IO) {
+        loadJsonObjectAsIntMap("vocab.json").also { vocabulary = it }
     }
 
-    // ── idx2word: index → word ────────────────────────────────────────────────
-    @Volatile private var _idx2word: Map<Int, String>? = null
-    suspend fun idx2word(): Map<Int, String> = _idx2word ?: withContext(Dispatchers.IO) {
+    @Volatile private var indexToWord: Map<Int, String>? = null
+    suspend fun idx2word(): Map<Int, String> = indexToWord ?: withContext(Dispatchers.IO) {
         loadJsonObjectAsStringMap("idx2word.json")
             .mapKeys { it.key.toInt() }
-            .also { _idx2word = it }
+            .also { indexToWord = it }
     }
 
-    // ── N-Gram Data (Unigrams, Total Tokens, and Bigrams) ─────────────────────
-    @Volatile private var _ngramDataLoaded = false
-    @Volatile private var _unigrams: Map<String, Int> = emptyMap()
-    @Volatile private var _totalTokens: Int = 0
-    @Volatile private var _bigramsForEngine: Map<String, List<String>> = emptyMap()
-    @Volatile private var _bigramsForCorrector: Map<String, Map<String, Int>> = emptyMap()
+    @Volatile private var isNgramDataLoaded = false
+    @Volatile private var unigramCounts: Map<String, Int> = emptyMap()
+    @Volatile private var totalTokensCount: Int = 0
+    @Volatile private var bigramsForSuggestion: Map<String, List<String>> = emptyMap()
+    @Volatile private var bigramsForCorrection: Map<String, Map<String, Int>> = emptyMap()
 
     private suspend fun loadNgramData() = withContext(Dispatchers.IO) {
-        if (_ngramDataLoaded) return@withContext
-        val raw = readAssetText("ngram_model.json")
-        val root = JSONObject(raw)
+        if (isNgramDataLoaded) return@withContext
+        val rawJson = readAssetText("ngram_model.json")
+        val rootObject = JSONObject(rawJson)
 
-        // 1. Parse Unigrams & Total Tokens
-        val wordsObj = root.getJSONObject("words")
-        val uMap = HashMap<String, Int>(wordsObj.length())
+        val wordsObject = rootObject.getJSONObject("words")
+        val uMap = HashMap<String, Int>(wordsObject.length())
         var tTokens = 0
-        val uKeys = wordsObj.keys()
+        val uKeys = wordsObject.keys()
         while (uKeys.hasNext()) {
-            val k = uKeys.next()
-            val count = wordsObj.getInt(k)
-            uMap[k] = count
+            val key = uKeys.next()
+            val count = wordsObject.getInt(key)
+            uMap[key] = count
             tTokens += count
         }
-        _unigrams = uMap
-        _totalTokens = tTokens
+        unigramCounts = uMap
+        totalTokensCount = tTokens
 
-        // 2. Parse Bigrams (Creating both formats needed by the app)
-        val bigramObj = root.getJSONObject("bigrams")
-        val engineMap = HashMap<String, List<String>>(bigramObj.length())
-        val correctorMap = HashMap<String, Map<String, Int>>(bigramObj.length())
-        val bKeys = bigramObj.keys()
+        val bigramsObject = rootObject.getJSONObject("bigrams")
+        val suggestionMap = HashMap<String, List<String>>(bigramsObject.length())
+        val correctionMap = HashMap<String, Map<String, Int>>(bigramsObject.length())
+        val bKeys = bigramsObject.keys()
 
         while (bKeys.hasNext()) {
             val word = bKeys.next()
-            val arr = bigramObj.getJSONArray(word)
+            val nextWordsArray = bigramsObject.getJSONArray(word)
 
-            val nextWordsList = ArrayList<String>(minOf(arr.length(), 10))
-            val nextWordsCounts = HashMap<String, Int>(arr.length())
+            val nextWordsList = ArrayList<String>(minOf(nextWordsArray.length(), 10))
+            val nextWordsWithCounts = HashMap<String, Int>(nextWordsArray.length())
 
-            for (i in 0 until arr.length()) {
-                val entry = arr.getJSONArray(i)
+            for (i in 0 until nextWordsArray.length()) {
+                val entry = nextWordsArray.getJSONArray(i)
                 val nextWord = entry.getString(0)
                 val count = entry.getInt(1)
 
-                if (i < 10) nextWordsList.add(nextWord)
-                nextWordsCounts[nextWord] = count
+                if (i < 10) {
+                    nextWordsList.add(nextWord)
+                }
+                nextWordsWithCounts[nextWord] = count
             }
-            engineMap[word] = nextWordsList
-            correctorMap[word] = nextWordsCounts
+            suggestionMap[word] = nextWordsList
+            correctionMap[word] = nextWordsWithCounts
         }
-        _bigramsForEngine = engineMap
-        _bigramsForCorrector = correctorMap
-        _ngramDataLoaded = true
+        bigramsForSuggestion = suggestionMap
+        bigramsForCorrection = correctionMap
+        isNgramDataLoaded = true
     }
 
-    // Public Getters for N-gram data
-    suspend fun unigrams(): Map<String, Int> { loadNgramData(); return _unigrams }
-    suspend fun totalTokens(): Int { loadNgramData(); return _totalTokens }
-    suspend fun bigrams(): Map<String, List<String>> { loadNgramData(); return _bigramsForEngine }
-    suspend fun bigramsWithCounts(): Map<String, Map<String, Int>> { loadNgramData(); return _bigramsForCorrector }
+    suspend fun unigrams(): Map<String, Int> {
+        loadNgramData()
+        return unigramCounts
+    }
 
+    suspend fun totalTokens(): Int {
+        loadNgramData()
+        return totalTokensCount
+    }
 
-    // ── Dictionary & Prefix index ─────────────────────────────────────────────
-    @Volatile private var _prefixIndex: Map<String, List<String>>? = null
-    @Volatile private var _validWords: List<String>? = null
+    suspend fun bigrams(): Map<String, List<String>> {
+        loadNgramData()
+        return bigramsForSuggestion
+    }
 
-    suspend fun prefixIndex(): Map<String, List<String>> = _prefixIndex
-        ?: withContext(Dispatchers.IO) {
-            buildPrefixIndexAndDictionary().also { _prefixIndex = it }
-        }
+    suspend fun bigramsWithCounts(): Map<String, Map<String, Int>> {
+        loadNgramData()
+        return bigramsForCorrection
+    }
 
-    suspend fun validWords(): List<String> = _validWords
-        ?: withContext(Dispatchers.IO) {
-            buildPrefixIndexAndDictionary()
-            _validWords!!
-        }
+    @Volatile private var prefixIndexMap: Map<String, List<String>>? = null
+    @Volatile private var validWordsList: List<String>? = null
+    @Volatile private var validWordsSet: Set<String>? = null
+
+    suspend fun wordSet(): Set<String> = validWordsSet ?: withContext(Dispatchers.IO) {
+        validWords().toSet().also { validWordsSet = it }
+    }
+
+    suspend fun prefixIndex(): Map<String, List<String>> = prefixIndexMap ?: withContext(Dispatchers.IO) {
+        buildPrefixIndexAndDictionary().also { prefixIndexMap = it }
+    }
+
+    suspend fun validWords(): List<String> = validWordsList ?: withContext(Dispatchers.IO) {
+        buildPrefixIndexAndDictionary()
+        validWordsList!!
+    }
 
     private fun buildPrefixIndexAndDictionary(): Map<String, List<String>> {
-        val raw      = readAssetText("odia_dictionary.json")
-        val index    = HashMap<String, MutableList<String>>()
-        val stripped = raw.trim().removePrefix("[").removeSuffix("]")
-        val tokens   = stripped.split("\",\"")
+        val rawJson = readAssetText("odia_dictionary.json")
+        val index = HashMap<String, MutableList<String>>()
+        val stripped = rawJson.trim().removePrefix("[").removeSuffix("]")
+        val tokens = stripped.split("\",\"")
         val flatList = ArrayList<String>(tokens.size)
 
         for (token in tokens) {
             val word = token.trim().removePrefix("\"").removeSuffix("\"")
             if (word.isBlank()) continue
 
-            flatList.add(word) // Save for the Spell Corrector
-
+            flatList.add(word)
             val key = word[0].toString()
             index.getOrPut(key) { mutableListOf() }.add(word)
         }
 
-        _validWords = flatList
+        validWordsList = flatList
         return index.mapValues { it.value.toList() }
     }
 
-    // ── TFLite model as MappedByteBuffer ──────────────────────────────────────
-    @Volatile private var _modelBuffer: MappedByteBuffer? = null
-    suspend fun modelBuffer(): MappedByteBuffer = _modelBuffer ?: withContext(Dispatchers.IO) {
+    @Volatile private var modelByteBuffer: MappedByteBuffer? = null
+    suspend fun modelBuffer(): MappedByteBuffer = modelByteBuffer ?: withContext(Dispatchers.IO) {
         context.assets.openFd("lstm_model.tflite").use { afd ->
             afd.createInputStream().channel.use { channel ->
                 channel.map(
                     FileChannel.MapMode.READ_ONLY,
                     afd.startOffset,
-                    afd.declaredLength,
-                ).also { _modelBuffer = it }
+                    afd.declaredLength
+                ).also { modelByteBuffer = it }
             }
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Private helpers
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun readAssetText(fileName: String): String {
-        val sb = StringBuilder()
+        val stringBuilder = StringBuilder()
         context.assets.open(fileName).use { stream ->
             BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
                 var line: String?
-                while (reader.readLine().also { line = it } != null) sb.append(line)
+                while (reader.readLine().also { line = it } != null) {
+                    stringBuilder.append(line)
+                }
             }
         }
-        return sb.toString()
+        return stringBuilder.toString()
     }
 
     private fun loadJsonObjectAsStringMap(fileName: String): Map<String, String> {
-        val obj = JSONObject(readAssetText(fileName))
-        val map = HashMap<String, String>(obj.length())
-        val keys = obj.keys()
+        val jsonObject = JSONObject(readAssetText(fileName))
+        val resultMap = HashMap<String, String>(jsonObject.length())
+        val keys = jsonObject.keys()
         while (keys.hasNext()) {
-            val k = keys.next()
-            map[k] = obj.getString(k)
+            val key = keys.next()
+            resultMap[key] = jsonObject.getString(key)
         }
-        return map
+        return resultMap
     }
 
     private fun loadJsonObjectAsIntMap(fileName: String): Map<String, Int> {
-        val obj = JSONObject(readAssetText(fileName))
-        val map = HashMap<String, Int>(obj.length())
-        val keys = obj.keys()
+        val jsonObject = JSONObject(readAssetText(fileName))
+        val resultMap = HashMap<String, Int>(jsonObject.length())
+        val keys = jsonObject.keys()
         while (keys.hasNext()) {
-            val k = keys.next()
-            map[k] = obj.getInt(k)
+            val key = keys.next()
+            resultMap[key] = jsonObject.getInt(key)
         }
-        return map
+        return resultMap
     }
 }

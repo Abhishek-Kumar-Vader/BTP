@@ -7,7 +7,7 @@ data class KeyData(
     val shiftedCode: String = code,
     val keyType: KeyType = KeyType.CHARACTER,
     val widthWeight: Float = 1f,
-    val contentDescription: String = displayLabel, // accessibility
+    val contentDescription: String = displayLabel
 )
 
 enum class KeyType {
@@ -16,7 +16,7 @@ enum class KeyType {
     ENTER,
     SHIFT,
     SPACE,
-    SYMBOL_TOGGLE,   // toggle Number/Symbol layer
-    LANGUAGE_SWITCH, // placeholder for language switching
-    TAB,
+    SYMBOL_TOGGLE,
+    LANGUAGE_SWITCH,
+    TAB
 }

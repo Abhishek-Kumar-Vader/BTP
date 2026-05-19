@@ -24,14 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.odiakeyboard.ui.theme.OdiaKeyboardTheme
 
-/**
- * Launcher Activity — shown when the user opens the app from the app drawer.
- *
- * Its sole purpose is to guide the user to enable the keyboard in System Settings.
- * No keyboard UI is rendered here.
- */
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -42,7 +35,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         onOpenSettings = {
                             startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
-                        },
+                        }
                     )
                 }
             }
@@ -53,28 +46,28 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun SetupScreen(
     modifier: Modifier = Modifier,
-    onOpenSettings: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     Column(
-        modifier            = modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text      = "ଓଡ଼ିଆ କୀବୋର୍ଡ",   // "Odia Keyboard" in Odia script
-            style     = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
+            text = "ଓଡ଼ିଆ କୀବୋର୍ଡ",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text      = stringResource(R.string.enable_keyboard_message),
-            style     = MaterialTheme.typography.bodyMedium,
+            text = stringResource(R.string.enable_keyboard_message),
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
-            color     = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(24.dp))
