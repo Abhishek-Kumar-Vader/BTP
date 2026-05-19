@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Odia Keyboard</string>
+    <string name="enable_keyboard_message">To start using the Odia Keyboard, please enable it in your system settings and select it as your active input method.</string>
+    <string name="open_settings">Open Settings</string>
+    <string name="ime_name">Odia Keyboard</string>
+    <string name="subtype_odia">Odia</string>
+</resources>

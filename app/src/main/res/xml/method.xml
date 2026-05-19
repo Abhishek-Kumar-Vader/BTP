@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<input-method xmlns:android="http://schemas.android.com/apk/res/android"
+    android:isDefault="false">
+
+    <subtype
+        android:label="@string/subtype_odia"
+        android:imeSubtypeMode="keyboard"
+        android:imeSubtypeLocale="or_IN"
+        android:isAsciiCapable="false" />
+
+</input-method>
