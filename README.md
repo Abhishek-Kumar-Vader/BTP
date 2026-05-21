@@ -29,3 +29,14 @@ The application is written entirely in Kotlin. The UI leverages Jetpack Compose.
 ## Requirements
 
 The project targets Android SDK 35 (Android 15) and requires a minimum SDK of 26 (Android 8.0).
+
+
+## Dataset Sources
+
+The datasets used in this project are publicly available from:
+
+1. CC-100 Odia Corpus  
+http://data.statmt.org/cc-100/or.txt.xz
+
+2. Odia Wikipedia Dump  
+https://dumps.wikimedia.org/orwiki/latest/orwiki-latest-pages-articles.xml.bz2
